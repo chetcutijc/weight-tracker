@@ -127,6 +127,7 @@ table.t td.r, table.t th.r { text-align: right; }
       <button class="primary grow" id="au-in">Sign in</button>
       <button id="au-up">Create account</button>
     </div>
+    <button class="ghost small" id="au-forgot" style="margin-top:8px;padding-left:0">Forgot password?</button>
     <div class="err" id="au-err"></div>
   </div>
 </section>
@@ -337,8 +338,28 @@ const S = { user: null, weights: [], meals: [], garmin: [], profile: {}, range: 
 async function boot() {
   const { data: { session } } = await sb.auth.getSession();
   setUser(session?.user ?? null);
-  sb.auth.onAuthStateChange((_e, s) => setUser(s?.user ?? null));
+  sb.auth.onAuthStateChange((event, s) => {
+    setUser(s?.user ?? null);
+    if (event === "PASSWORD_RECOVERY") setTimeout(setNewPassword, 300);
+  });
 }
+const APP_URL = location.origin + location.pathname;
+async function setNewPassword() {
+  for (;;) {
+    const pw = prompt("Choose a new password (at least 8 characters):");
+    if (pw == null) return;
+    if (pw.length < 8) { alert("At least 8 characters, please."); continue; }
+    const { error } = await sb.auth.updateUser({ password: pw });
+    if (error) { alert("Couldn't update: " + error.message); continue; }
+    toast("Password updated"); return;
+  }
+}
+$("au-forgot").onclick = async () => {
+  const email = $("au-email").value.trim();
+  if (!email) { $("au-err").textContent = "Enter your email above first."; return; }
+  const { error } = await sb.auth.resetPasswordForEmail(email, { redirectTo: APP_URL });
+  $("au-err").textContent = error ? error.message : "Check your email for a reset link. Open it on this device.";
+};
 function setUser(u) {
   const changed = (u?.id ?? null) !== (S.user?.id ?? null);
   S.user = u;
@@ -349,7 +370,7 @@ async function auth(kind) {
   $("au-err").textContent = "";
   const email = $("au-email").value.trim(), password = $("au-pass").value;
   if (!email || password.length < 8) { $("au-err").textContent = "Enter your email and a password of at least 8 characters."; return; }
-  const fn = kind === "up" ? sb.auth.signUp({ email, password }) : sb.auth.signInWithPassword({ email, password });
+  const fn = kind === "up" ? sb.auth.signUp({ email, password, options: { emailRedirectTo: APP_URL } }) : sb.auth.signInWithPassword({ email, password });
   const { data, error } = await fn;
   if (error) { $("au-err").textContent = error.message; return; }
   if (kind === "up" && !data.session) $("au-err").textContent = "Check your email to confirm the account, then sign in.";
