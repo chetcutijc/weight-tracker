@@ -120,6 +120,9 @@ table.t td.r, table.t th.r { text-align: right; }
     <input id="au-email" type="email" autocomplete="email">
     <label class="f" for="au-pass">Password</label>
     <input id="au-pass" type="password" autocomplete="current-password">
+    <label class="small muted" style="display:flex;gap:6px;align-items:center;margin-top:6px">
+      <input type="checkbox" style="width:auto" onchange="document.getElementById('au-pass').type=this.checked?'text':'password'"> Show password
+    </label>
     <div class="row" style="margin-top:12px">
       <button class="primary grow" id="au-in">Sign in</button>
       <button id="au-up">Create account</button>
