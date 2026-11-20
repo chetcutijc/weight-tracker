@@ -112,7 +112,7 @@ table.t td.r, table.t th.r { text-align: right; }
 <body>
 
 <!-- ============ AUTH ============ -->
-<section id="auth" hidden>
+<section id="auth">
   <h1 style="margin-bottom:4px">Weight Tracker</h1>
   <p class="muted" style="margin-top:0">Sign in to your private log.</p>
   <div class="card">
@@ -127,6 +127,13 @@ table.t td.r, table.t th.r { text-align: right; }
     <div class="err" id="au-err"></div>
   </div>
 </section>
+<script>
+  // If the app script fails to load (old browser, blocked CDN), say so instead of showing a dead form.
+  window.addEventListener("load", () => setTimeout(() => {
+    if (!window.__wtReady) document.getElementById("au-err").textContent =
+      "The app didn't start. Reload the page; if this persists, send a screenshot.";
+  }, 4000));
+</script>
 
 <!-- ============ APP ============ -->
 <div id="app" hidden>
@@ -732,7 +739,8 @@ document.querySelector("nav.tabs").onclick = (e) => {
 };
 matchMedia("(prefers-color-scheme: dark)").addEventListener("change", renderTrends);
 
-boot();
+window.__wtReady = true;
+boot().catch((e) => { $("au-err").textContent = "Startup error: " + e.message; });
 </script>
 </body>
 </html>
