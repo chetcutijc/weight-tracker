@@ -163,10 +163,12 @@ table.t td.r, table.t th.r { text-align: right; }
 
       <div class="card">
         <div class="row" style="margin-bottom:10px">
-          <label class="btn primary btn-big grow" for="photo-in">📷 Log meal from photo</label>
-          <button id="manual-btn" aria-label="Add meal manually">＋ Manual</button>
+          <label class="btn primary btn-big grow" for="photo-in">📷 Camera</label>
+          <label class="btn btn-big grow" for="library-in">🖼 Library</label>
+          <button class="btn-big" style="width:auto" id="manual-btn" aria-label="Add meal manually">＋</button>
         </div>
         <input id="photo-in" type="file" accept="image/*" capture="environment" hidden>
+        <input id="library-in" type="file" accept="image/*" hidden>
         <div class="row" style="justify-content:space-between">
           <h2 style="margin:0">Meals today</h2>
           <span class="small muted" id="meals-total"></span>
@@ -462,7 +464,7 @@ function renderToday() {
 }
 
 function mealRow(m) {
-  return `<div class="meal">
+  return `<div class="meal" data-edit="${m.id}" style="cursor:pointer" title="Tap to edit">
     <div class="thumb" data-photo="${esc(m.photo_path ?? "")}">${m.photo_path ? "" : "🍽"}</div>
     <div class="grow" style="flex:1;min-width:0">
       <div class="name">${esc(m.name)}</div>
@@ -656,7 +658,7 @@ function ensureDeleteBtn(show) {
   if (!b) { b = document.createElement("button"); b.id = "m-del"; b.className = "btn-big"; b.style.marginTop = "8px"; b.style.color = "var(--bad)"; b.textContent = "Delete meal"; $("m-save").after(b); b.onclick = deleteMeal; }
   b.hidden = !show;
 }
-function closeSheet() { $("sheet-bg").classList.remove("on"); M.blob = M.b64 = M.ai = M.editing = null; $("photo-in").value = ""; }
+function closeSheet() { $("sheet-bg").classList.remove("on"); M.blob = M.b64 = M.ai = M.editing = null; $("photo-in").value = ""; $("library-in").value = ""; }
 $("sheet-close").onclick = closeSheet;
 $("sheet-bg").onclick = (e) => e.target === $("sheet-bg") && closeSheet();
 $("manual-btn").onclick = () => { M.blob = null; openSheet(); };
@@ -702,14 +704,21 @@ async function analyze(hint) {
   } finally { $("m-status").hidden = true; $("m-save").disabled = false; }
 }
 
-$("photo-in").onchange = async (e) => {
+async function onPhoto(e) {
   const file = e.target.files?.[0]; if (!file) return;
   if (M.objectUrl) URL.revokeObjectURL(M.objectUrl);
   M.objectUrl = URL.createObjectURL(file);
   openSheet({ photo: true });
+  // Library photos: default the meal time to when the photo was taken, if the file says so
+  if (e.target.id === "library-in" && file.lastModified && Date.now() - file.lastModified < 7 * 864e5) {
+    const t = new Date(file.lastModified);
+    $("m-when").value = localInput(t); $("m-type").value = defaultType(t);
+  }
   try { Object.assign(M, await shrink(file)); } catch { $("m-err").textContent = "Couldn't read that image."; return; }
   analyze();
-};
+}
+$("photo-in").onchange = onPhoto;
+$("library-in").onchange = onPhoto;
 $("m-redo").onclick = () => M.b64 && analyze($("m-hint").value.trim());
 
 $("m-save").onclick = async () => {
